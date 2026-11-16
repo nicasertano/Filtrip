@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const destinos = [
   {
@@ -34,6 +34,15 @@ export default function Home() {
   const [data, setData] = useState("");
   const [viajantes, setViajantes] = useState("2 viajantes");
   const [busca, setBusca] = useState("");
+  const [hoje, setHoje] = useState("");
+  const [ano, setAno] = useState("");
+
+  // Datas calculadas no navegador, para não ficarem "congeladas" no build
+  useEffect(() => {
+    const agora = new Date();
+    setHoje(agora.toLocaleDateString("en-CA"));
+    setAno(String(agora.getFullYear()));
+  }, []);
 
   const destinosFiltrados = destinos.filter((item) =>
     item.nome.toLowerCase().includes(busca.toLowerCase())
@@ -448,7 +457,7 @@ export default function Home() {
         </div>
 
         <div className="border-t border-white/10 px-6 py-5 text-center text-xs text-[#aebed0]">
-          © {new Date().getFullYear()} Lumina Travel. Todos os direitos reservados.
+          © {ano} Lumina Travel. Todos os direitos reservados.
         </div>
       </footer>
     </main>
