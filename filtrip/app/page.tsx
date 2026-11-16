@@ -220,7 +220,7 @@ export default function Home() {
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
-                min={new Date().toLocaleDateString("en-CA")}
+                min={hoje || undefined}
                 className="w-full rounded-xl border border-[#e6e8eb] bg-[#fffdf5] px-4 py-4 text-sm outline-none focus:border-[#cba72f]"
               />
             </label>
