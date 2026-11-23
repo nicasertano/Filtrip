@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
+
+// Cliente Supabase (usa as variáveis do seu .env.local)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+);
 
 const destinos = [
   {
@@ -37,12 +46,54 @@ export default function Home() {
   const [hoje, setHoje] = useState("");
   const [ano, setAno] = useState("");
 
+  // Estado do usuário logado
+  const [usuario, setUsuario] = useState<User | null>(null);
+  const [carregandoUsuario, setCarregandoUsuario] = useState(true);
+  const [saindo, setSaindo] = useState(false);
+
   // Datas calculadas no navegador, para não ficarem "congeladas" no build
   useEffect(() => {
     const agora = new Date();
     setHoje(agora.toLocaleDateString("en-CA"));
     setAno(String(agora.getFullYear()));
   }, []);
+
+  // Descobre se há alguém logado e acompanha login/logout em tempo real
+  useEffect(() => {
+    let ativo = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!ativo) return;
+      setUsuario(data.session?.user ?? null);
+      setCarregandoUsuario(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_evento, sessao) => {
+        setUsuario(sessao?.user ?? null);
+        setCarregandoUsuario(false);
+      }
+    );
+
+    return () => {
+      ativo = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  async function sair() {
+    setSaindo(true);
+    await supabase.auth.signOut();
+    setSaindo(false);
+  }
+
+  // Nome para exibir: usa o nome cadastrado ou, se não houver, o começo do e-mail
+  const nomeCompleto: string =
+    (usuario?.user_metadata?.nome as string | undefined) ??
+    usuario?.email?.split("@")[0] ??
+    "";
+  const primeiroNome = nomeCompleto.trim().split(" ")[0];
+  const inicial = (primeiroNome[0] ?? "?").toUpperCase();
 
   const destinosFiltrados = destinos.filter((item) =>
     item.nome.toLowerCase().includes(busca.toLowerCase())
@@ -60,7 +111,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#fffdf5] text-[#102b4e]">
       {/* Navegação */}
       <header className="sticky top-0 z-50 border-b border-[#e9e5d6] bg-[#fffdf5]/95 backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-10">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-5 lg:px-10">
           <a href="#" className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#102b4e] text-2xl text-[#ffe58a]">
               ✳
@@ -85,12 +136,50 @@ export default function Home() {
             </a>
           </div>
 
-          <a
-            href="#pesquisar"
-            className="rounded-full bg-[#102b4e] px-5 py-3 text-sm font-bold text-[#fff0ad] transition hover:bg-[#1b426d]"
-          >
-            Planejar viagem ↗
-          </a>
+          {/* Área de login / usuário */}
+          <div className="flex items-center gap-3">
+            {carregandoUsuario ? (
+              // Espaço reservado enquanto verifica a sessão (evita "pulo" no layout)
+              <span className="h-11 w-28 animate-pulse rounded-full bg-[#ece8dc]" />
+            ) : usuario ? (
+              <>
+                <div className="flex items-center gap-3 rounded-full border border-[#e9e5d6] bg-white py-1.5 pl-1.5 pr-4">
+                  <span
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ffe58a] text-sm font-black text-[#102b4e]"
+                    aria-hidden="true"
+                  >
+                    {inicial}
+                  </span>
+                  <span className="hidden text-sm font-bold sm:block">
+                    Olá, {primeiroNome}
+                  </span>
+                </div>
+
+                <button
+                  onClick={sair}
+                  disabled={saindo}
+                  className="rounded-full border border-[#dcd8ca] px-5 py-3 text-sm font-bold transition hover:border-[#102b4e] disabled:opacity-60"
+                >
+                  {saindo ? "Saindo..." : "Sair"}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full border border-[#dcd8ca] px-5 py-3 text-sm font-bold transition hover:border-[#102b4e]"
+                >
+                  Entrar
+                </Link>
+                <a
+                  href="#pesquisar"
+                  className="hidden rounded-full bg-[#102b4e] px-5 py-3 text-sm font-bold text-[#fff0ad] transition hover:bg-[#1b426d] sm:inline-flex"
+                >
+                  Planejar viagem ↗
+                </a>
+              </>
+            )}
+          </div>
         </nav>
       </header>
 
